@@ -32,6 +32,8 @@ double lastX, lastY;
 #include "particle.h"
 #include <time.h>
 
+std::string HOME_DIRECTORY = "/home/hiatus/Documents/Metaballs"; 
+
 // Whenever the window is changed this function is called
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 // Mouse call back
@@ -45,6 +47,8 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
+
+
 
 int main()
 {
@@ -84,12 +88,9 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glLineWidth(1.0f); 
 
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // Temporary code before i place it into a class
-    ComputeShader computeShader("/home/hiatus/Documents/2DFluidSimulator/src/shaders/compute.vs");
+    ComputeShader computeShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/compute.vs")).c_str());
 
     // Important vectors to track
     std::vector<float> positions;
@@ -133,8 +134,8 @@ int main()
     glBufferData(GL_SHADER_STORAGE_BUFFER, positions.size() * 4 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, outputPositionSSBO);
 
-    Shader globalShader("/home/hiatus/Documents/2DFluidSimulator/src/shaders/vert.vs", "/home/hiatus/Documents/2DFluidSimulator/src/shaders/frag.fs");
-    Shader normalGlobalShader("/home/hiatus/Documents/2DFluidSimulator/src/shaders/regularVert.vs", "/home/hiatus/Documents/2DFluidSimulator/src/shaders/frag.fs");
+    Shader globalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/vert.vs")).c_str(),std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
+    Shader normalGlobalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/regularVert.vs")).c_str(), std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
 
     // Object testObject(&globalShader, {0.0f, 0.0f, 1080.0f, 0.0f, 1920.0f, 1080.0f});
     Object testObject(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2});
