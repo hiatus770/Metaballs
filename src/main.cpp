@@ -11,24 +11,26 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "texture.h"
 
-const int SRC_WIDTH = 1920;
-const int SRC_HEIGHT = 1080;
+int SRC_WIDTH = 1920;
+int SRC_HEIGHT = 1080;
 const int CHUNK_SIZE = 1;
 const int STARS_PER_CHUNK = 100;
 const int PLANETS_PER_CHUNK = 10;
-const int X_AMOUNT = 1920/4;
-const int Y_AMOUNT = 1080/8;
-const float DELTA_L = 8.0f;
+const int X_AMOUNT = 1920 / 2;
+const int Y_AMOUNT = 1080 / 4;
+const float DELTA_L = 4.0f;
 
 #include "camera.h"
 
 float zoomLevel = 1.0f;
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::ortho((float)-SRC_WIDTH / 2, (float)SRC_WIDTH / 2, (float)-SRC_HEIGHT / 2, (float)SRC_HEIGHT / 2, -1.0f, 1.0f)); // Global Camera for the entire code thing :)
+bool isDragging = false;
+double lastX, lastY;
 
 #include "player.h"
 #include "compute.h"
 #include "particle.h"
-#include <time.h> 
+#include <time.h>
 
 // Whenever the window is changed this function is called
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -38,6 +40,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 // Scrol callback
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
@@ -80,6 +83,7 @@ int main()
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     // glEnable(GL_BLEND);
     // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -91,15 +95,16 @@ int main()
     std::vector<float> positions;
     std::vector<float> outputPositions;
     std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, 80.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
-    
-    srand(glfwGetTime()); 
-    for(int i = 0; i < 20; i++){
-        metaballs.push_back(1920/2 - rand()%(1920)); 
-        metaballs.push_back(1080/2 - rand()%(1080)); 
-        metaballs.push_back(rand()%(20)); 
-        metaballs.push_back(0); 
+
+    srand(glfwGetTime());
+    for (int i = 0; i < 20; i++)
+    {
+        metaballs.push_back(1920 / 2 - rand() % (1920));
+        metaballs.push_back(1080 / 2 - rand() % (1080));
+        metaballs.push_back(rand() % (20));
+        metaballs.push_back(0);
     }
-    
+
     for (int i = 0; i < X_AMOUNT; i++)
     {
         for (int j = 0; j < Y_AMOUNT; j++)
@@ -153,16 +158,25 @@ int main()
         processInput(window);
 
         // Get mouse position
-        double xpos, ypos; 
-        glfwGetCursorPos(window, &xpos, &ypos); 
-        metaballs[0] = xpos - 1920/2;
-        metaballs[1] = 1080/2 - ypos; 
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
 
-        // metaballs[0]++; 
+        // Convert from screen space to NDC
+        xpos = xpos / SRC_WIDTH * 2.0 - 1.0;
+        ypos = 1.0 - ypos / SRC_HEIGHT * 2.0;
+
+        // Adjust for camera position and zoom
+        xpos = xpos * (SRC_WIDTH / (2.0 * zoomLevel)) + camera.position.x;
+        ypos = ypos * (SRC_HEIGHT / (2.0 * zoomLevel)) + camera.position.y;
+
+        metaballs[0] = xpos;
+        metaballs[1] = ypos;
+
+        // metaballs[0]++;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, metaballs.size() * sizeof(float), metaballs.data(), GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, metaballsSSBO);
-    
+
         // Running compute shader
         computeShader.use();
         computeShader.setFloat("delta", DELTA_L);
@@ -193,51 +207,64 @@ int main()
 // This function is going to be used to resize the viewport everytime it is resized by the user
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
+    SRC_HEIGHT = height;
+    SRC_WIDTH = width;
     glViewport(0, 0, width, height);
 }
 
-// For zoom level
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+
+
+// Zooming callback
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    zoomLevel -= yoffset * 0.1f;
-    zoomLevel = std::max(zoomLevel, 0.1f);
+    // Calculate new zoom level
+    double newZoomLevel = zoomLevel * std::exp(-yoffset / 10.0);
+
+    // Clamp the zoom level to a range
+    double minVal = 0.01; 
+    double maxVal = 100.0; 
+    newZoomLevel = std::max(minVal, newZoomLevel);
+    newZoomLevel = std::min(maxVal, newZoomLevel);
+
+    // Set the new zoom level
+    zoomLevel = newZoomLevel;
 }
 
-// Currently no mouse controls are enabled
-void mouse_callback(GLFWwindow *window, double xposIn, double yposIn)
+
+// Mouse button callback
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-    // float xpos = static_cast<float>(xposIn);
-    // float ypos = static_cast<float>(yposIn);
-    // if (firstMouse)
-    // {
-    //     lastX = xpos;
-    //     lastY = ypos;
-    //     firstMouse = false;
-    // }
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        isDragging = true;
+        glfwGetCursorPos(window, &lastX, &lastY);
+    }
 
-    // float xoffset = xpos - lastX;
-    // float yoffset = lastY - ypos;
-    // lastX = xpos;
-    // lastY = ypos;
-
-    // float sensitivity = 0.1f;
-    // xoffset *= sensitivity;
-    // yoffset *= sensitivity;
-
-    // yaw   += xoffset;
-    // pitch += yoffset;
-
-    // if(pitch > 89.0f)
-    //     pitch = 89.0f;
-    // if(pitch < -89.0f)
-    //     pitch = -89.0f;
-
-    // glm::vec3 direction;
-    // direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    // direction.y = sin(glm::radians(pitch));
-    // direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    // cameraFront = glm::normalize(direction);
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+    {
+        isDragging = false;
+    }
 }
+
+// Mouse movement callback
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (isDragging)
+    {
+        // Calculate the mouse's offset since the last frame
+        double dx = xpos - lastX;
+        double dy = ypos - lastY;
+
+        // Update the camera's position
+        camera.position.x -= dx * 1 / zoomLevel;
+        camera.position.y += dy * 1 / zoomLevel;
+
+        // Update the last mouse position
+        lastX = xpos;
+        lastY = ypos;
+    }
+}
+
 
 /**
  * @brief Handles all user input given the window object, currently handles player movement
