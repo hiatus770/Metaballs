@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/hiatus/Documents/Metaballs/build",
+  "command": "/usr/bin/g++ -I/home/hiatus/Documents/Metaballs/include -I/home/hiatus/Documents/Metaballs/GraphicsStuff -g -o CMakeFiles/GraphicsStuff.dir/src/main.cpp.o -c /home/hiatus/Documents/Metaballs/src/main.cpp",
+  "file": "/home/hiatus/Documents/Metaballs/src/main.cpp",
+  "output": "CMakeFiles/GraphicsStuff.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/hiatus/Documents/Metaballs/build",
+  "command": "/usr/bin/gcc -I/home/hiatus/Documents/Metaballs/include -I/home/hiatus/Documents/Metaballs/GraphicsStuff -g -o CMakeFiles/GraphicsStuff.dir/src/glad.c.o -c /home/hiatus/Documents/Metaballs/src/glad.c",
+  "file": "/home/hiatus/Documents/Metaballs/src/glad.c",
+  "output": "CMakeFiles/GraphicsStuff.dir/src/glad.c.o"
+}
+]

@@ -1,0 +1,3 @@
+/home/hiatus/Documents/Metaballs/build/CMakeFiles/GraphicsStuff.dir
+/home/hiatus/Documents/Metaballs/build/CMakeFiles/edit_cache.dir
+/home/hiatus/Documents/Metaballs/build/CMakeFiles/rebuild_cache.dir
