@@ -95,7 +95,7 @@ int main()
     // Important vectors to track
     std::vector<float> positions;
     std::vector<float> outputPositions;
-    std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, 80.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
+    std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -80.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
 
     srand(glfwGetTime());
     for (int i = 0; i < 20; i++)
