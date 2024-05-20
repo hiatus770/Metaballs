@@ -6,6 +6,7 @@ layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 //#extension GL_ARB_shader_storage_buffer_object : enable;
 
 uniform float delta; 
+uniform float lerp;
 
 layout (std430, binding = 4) buffer pos {
     vec2 positions[]; 
@@ -24,6 +25,11 @@ float computeAtXY(float x, float y){
     for(int i = 0; i < metaballs.length(); i++){
         float dist = distance(metaballs[i].xy, vec2(x, y)) + 0.0001;
         sum += inversesqrt(pow(metaballs[i].x - x, 2) + pow(metaballs[i].y - y, 2)) * metaballs[i].z;
+    }
+    if (lerp == 1 && sum > 1){
+        return 2; 
+    } else if (lerp == 1 && sum < 1){
+        return 0; 
     }
     return sum; 
 }

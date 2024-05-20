@@ -13,9 +13,6 @@
 
 int SRC_WIDTH = 1920;
 int SRC_HEIGHT = 1080;
-const int CHUNK_SIZE = 1;
-const int STARS_PER_CHUNK = 100;
-const int PLANETS_PER_CHUNK = 10;
 const int X_AMOUNT = 1920 / 2;
 const int Y_AMOUNT = 1080 / 4;
 const float DELTA_L = 4.0f;
@@ -26,8 +23,8 @@ float zoomLevel = 1.0f;
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::ortho((float)-SRC_WIDTH / 2, (float)SRC_WIDTH / 2, (float)-SRC_HEIGHT / 2, (float)SRC_HEIGHT / 2, -1.0f, 1.0f)); // Global Camera for the entire code thing :)
 bool isDragging = false;
 double lastX, lastY;
+bool debug = false; // Turning this to true enables the grid and other debug messaging  
 
-#include "player.h"
 #include "compute.h"
 #include "particle.h"
 #include <time.h>
@@ -95,7 +92,7 @@ int main()
     // Important vectors to track
     std::vector<float> positions;
     std::vector<float> outputPositions;
-    std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -80.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
+    std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -30.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
 
     srand(glfwGetTime());
     for (int i = 0; i < 20; i++)
@@ -137,9 +134,25 @@ int main()
     Shader globalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/vert.vs")).c_str(),std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
     Shader normalGlobalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/regularVert.vs")).c_str(), std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
 
-    // Object testObject(&globalShader, {0.0f, 0.0f, 1080.0f, 0.0f, 1920.0f, 1080.0f});
-    Object testObject(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2});
+    // Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f, 0.0f, 1920.0f, 1080.0f});
+    Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2});
     Object windowObject(&normalGlobalShader, {-1920.0f / 2, -1080.0f / 2, 1920.0f / 2, -1080.0f / 2, 1920.0f / 2, 1080.0f / 2, -1920.0f / 2, 1080.0f / 2}, {1.0f, 0.0f, 1.0f, 1.0f});
+
+    // GRID SPACING DEBUG / DEMO CODE 
+    std::vector<float> grid; 
+    for(int i = -SRC_WIDTH/(2); i < SRC_WIDTH/2; i+=DELTA_L){
+        grid.push_back(i + DELTA_L/2);            
+        grid.push_back(-1080.0f/2);  
+        grid.push_back(i + DELTA_L/2);            
+        grid.push_back(1080.0f/2); 
+    }
+    for(int i = -SRC_HEIGHT/(2); i < SRC_HEIGHT/2; i+=DELTA_L){
+        grid.push_back(-SRC_WIDTH/2);  
+        grid.push_back(i + DELTA_L/2);            
+        grid.push_back(SRC_WIDTH/2); 
+        grid.push_back(i + DELTA_L/2);            
+    }
+    Object gridObject(&normalGlobalShader, grid, {0.1f, 0.1f, 0.1f, 1.0f}); 
 
     // Main Loop of the function
     while (!glfwWindowShouldClose(window))
@@ -170,8 +183,8 @@ int main()
         xpos = xpos * (SRC_WIDTH / (2.0 * zoomLevel)) + camera.position.x;
         ypos = ypos * (SRC_HEIGHT / (2.0 * zoomLevel)) + camera.position.y;
 
-        metaballs[0] = xpos;
-        metaballs[1] = ypos;
+        // metaballs[0] = xpos;
+        // metaballs[1] = ypos;
 
         // metaballs[0]++;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
@@ -180,22 +193,27 @@ int main()
 
         // Running compute shader
         computeShader.use();
+        computeShader.setFloat("lerp", debug); 
         computeShader.setFloat("delta", DELTA_L);
         computeShader.dispatch();
         computeShader.wait();
 
         // NEW RENDERING CODE!
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, outputPositionSSBO);
-        testObject.shader->use();
-        testObject.shader->setVec4("color", testObject.objColor);
-        testObject.shader->setMat4("model", testObject.model);
-        testObject.shader->setMat4("view", camera.getViewMatrix());
-        testObject.shader->setMat4("projection", camera.getProjectionMatrix());
-        glBindVertexArray(testObject.VAO);
-        glDrawArraysInstanced(GL_LINES, 0, 2, X_AMOUNT * Y_AMOUNT);
+        metaballRenderer.shader->use();
+        metaballRenderer.shader->setVec4("color", metaballRenderer.objColor);
+        metaballRenderer.shader->setMat4("model", metaballRenderer.model);
+        metaballRenderer.shader->setMat4("view", camera.getViewMatrix());
+        metaballRenderer.shader->setMat4("projection", camera.getProjectionMatrix());
+        glBindVertexArray(metaballRenderer.VAO);
+        glDrawArraysInstanced(GL_LINE_LOOP, 0, 2, X_AMOUNT * Y_AMOUNT);
         glBindVertexArray(0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        windowObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
+        
+        if (debug){
+            gridObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES); 
+            windowObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
+        }
 
         glfwSwapBuffers(window); // Swaps the color buffer that is used to render to during this render iteration and show it ot the output screen
         glfwPollEvents();        // Checks if any events are triggered, updates the window state andcalls the corresponding functions
@@ -272,53 +290,18 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
  *
  * @param window
  */
+bool debugKeyPressed = false; 
 void processInput(GLFWwindow *window)
 {
     // // Function is used as follows player.processKeyboard(ENUM, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    // if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    //     player.processKeyboard(FORWARD, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    //     player.processKeyboard(BACKWARD, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    //     player.processKeyboard(STRAFE_LEFT, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    //     player.processKeyboard(STRAFE_RIGHT, deltaTime);
-
-    // if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-    //     player.processKeyboard(PITCH_UP, deltaTime);
-    // else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    //     player.processKeyboard(PITCH_DOWN, deltaTime);
-
-    // if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    //     player.processKeyboard(YAW_RIGHT, deltaTime);
-    // else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    //     player.processKeyboard(YAW_LEFT, deltaTime);
-
-    // if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
-    //     player.processKeyboard(RISE, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-    //     player.processKeyboard(FALL, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    //     player.processKeyboard(ROLL_RIGHT, deltaTime);
-    // if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-    //     player.processKeyboard(ROLL_LEFT, deltaTime);
-
-    // if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-    // {
-    //     /// Reset orientation
-    //     player.direction = glm::vec3(1.0f, 0.0f, 0.0f);
-    //     player.localUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    // }
-
-    // // Update calls
-    // player.update();
-
-    // std::cout << player.MovementSpeed << std::endl;
-
-    // camera.position = player.getCameraPosition();
-    // camera.direction = player.getCameraDirection();
-    // camera.cameraUp = player.getCameraUp();
-    // camera.projection =  glm::perspective(glm::radians(60.0f), (float)SRC_WIDTH/SRC_HEIGHT, 0.1f, 1000.0f);
+    
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && debugKeyPressed == false){
+        debug = !debug;  
+        debugKeyPressed = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE){
+        debugKeyPressed = false; 
+    }
 }
