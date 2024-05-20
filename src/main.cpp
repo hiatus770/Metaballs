@@ -95,11 +95,11 @@ int main()
     std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -30.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
 
     srand(glfwGetTime());
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 40; i++)
     {
         metaballs.push_back(1920 / 2 - rand() % (1920));
         metaballs.push_back(1080 / 2 - rand() % (1080));
-        metaballs.push_back(rand() % (20));
+        metaballs.push_back(rand() % (10));
         metaballs.push_back(0);
     }
 
@@ -187,6 +187,7 @@ int main()
         // metaballs[1] = ypos;
 
         // metaballs[0]++;
+
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, metaballs.size() * sizeof(float), metaballs.data(), GL_STATIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, metaballsSSBO);
