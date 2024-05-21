@@ -183,8 +183,13 @@ int main()
         xpos = xpos * (SRC_WIDTH / (2.0 * zoomLevel)) + camera.position.x;
         ypos = ypos * (SRC_HEIGHT / (2.0 * zoomLevel)) + camera.position.y;
 
-        // metaballs[0] = xpos;
-        // metaballs[1] = ypos;
+        metaballs[0] = xpos;
+        metaballs[1] = ypos;
+        metaballs[2] = 0; 
+
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)){
+            metaballs[2] = 10.0f; 
+        }
 
         // metaballs[0]++;
 
