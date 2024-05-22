@@ -43,7 +43,24 @@ public:
         unsigned int compute;
         compute = glCreateShader(GL_COMPUTE_SHADER);
         glShaderSource(compute, 1, &cShaderCode, NULL);
-        glCompileShader(compute); 
+        glCompileShader(compute);
+        checkCompileErrors(compute, "COMPUTE");
+
+        ID = glCreateProgram();
+        glAttachShader(ID, compute);
+        glLinkProgram(ID);
+        checkCompileErrors(ID, "PROGRAM");
+
+        glDeleteShader(compute);
+    }
+
+    ComputeShader(std::string computeSource)
+    {
+        const char *cShaderCode = computeSource.c_str();
+        unsigned int compute;
+        compute = glCreateShader(GL_COMPUTE_SHADER);
+        glShaderSource(compute, 1, &cShaderCode, NULL);
+        glCompileShader(compute);
         checkCompileErrors(compute, "COMPUTE");
 
         ID = glCreateProgram();
@@ -61,16 +78,16 @@ public:
     void dispatch()
     {
         // just keep it simple, 2d work group
-        glDispatchCompute(X_AMOUNT*Y_AMOUNT, 1, 1);
+        glDispatchCompute(X_AMOUNT * Y_AMOUNT, 1, 1);
     }
     void wait()
     {
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
 
-    void setFloat(const std::string &name, float value) const 
+    void setFloat(const std::string &name, float value) const
     {
-        glUniform1f(glGetUniformLocation(ID, name.c_str()), value); 
+        glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
     }
 
 private:

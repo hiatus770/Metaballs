@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/GraphicsStuff.dir/src/main.cpp.o CMakeFiles/GraphicsStuff.dir/src/glad.c.o -o GraphicsStuff  -lglfw -ldl -lGL

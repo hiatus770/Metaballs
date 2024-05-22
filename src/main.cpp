@@ -13,9 +13,11 @@
 
 int SRC_WIDTH = 1920;
 int SRC_HEIGHT = 1080;
-const int X_AMOUNT = 1920 / 2;
-const int Y_AMOUNT = 1080 / 4;
-const float DELTA_L = 4.0f;
+const int X_AMOUNT = 1920 / 2.5;
+const int Y_AMOUNT = 1080 / 5;
+const float COUNT = 384; 
+float DELTA_L = SRC_WIDTH / COUNT; 
+// float DELTA_L = 5.0f;
 
 #include "camera.h"
 
@@ -23,13 +25,14 @@ float zoomLevel = 1.0f;
 Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::ortho((float)-SRC_WIDTH / 2, (float)SRC_WIDTH / 2, (float)-SRC_HEIGHT / 2, (float)SRC_HEIGHT / 2, -1.0f, 1.0f)); // Global Camera for the entire code thing :)
 bool isDragging = false;
 double lastX, lastY;
-bool debug = false; // Turning this to true enables the grid and other debug messaging  
+bool debug = false; // Turning this to true enables the grid and other debug messaging
+bool autoscale = false; 
 
 #include "compute.h"
 #include "particle.h"
 #include <time.h>
 
-std::string HOME_DIRECTORY = "/home/hiatus/Documents/Metaballs"; 
+std::string HOME_DIRECTORY = "/home/hiatus/Documents/Metaballs";
 
 // Whenever the window is changed this function is called
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -41,11 +44,12 @@ void processInput(GLFWwindow *window);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
+std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -30.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
+void updateMetaballs(); 
+
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
-
-
 
 int main()
 {
@@ -85,14 +89,13 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glLineWidth(1.0f); 
+    glLineWidth(1.0f);
 
     ComputeShader computeShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/compute.vs")).c_str());
 
     // Important vectors to track
     std::vector<float> positions;
     std::vector<float> outputPositions;
-    std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -30.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
 
     srand(glfwGetTime());
     for (int i = 0; i < 40; i++)
@@ -131,28 +134,58 @@ int main()
     glBufferData(GL_SHADER_STORAGE_BUFFER, positions.size() * 4 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, outputPositionSSBO);
 
-    Shader globalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/vert.vs")).c_str(),std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
+    Shader globalShader(
+        std::string(R"(#version 430 core
+
+layout(binding = 2, std430) buffer outputpositions {
+    vec2 outputPositions[];
+};
+
+uniform mat4 model; 
+uniform mat4 view; 
+uniform mat4 projection; 
+uniform vec3 cameraPos;
+
+void main()
+{ 
+    vec2 bPos = outputPositions[gl_InstanceID * 2 + gl_VertexID]; 
+    gl_Position = projection * view * vec4(bPos.x, bPos.y, 0.0, 1.0);
+})"),
+        std::string(R"(#version 430 core
+out vec4 FragColor;
+
+uniform vec4 color = vec4(1.0, 1.0, 1.0, 1.0); 
+
+void main()
+{ 
+    FragColor = color; 
+})"));
+
+
     Shader normalGlobalShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/regularVert.vs")).c_str(), std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
+    Shader modifiedGridShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/modifiedVert.vs")).c_str(),std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
 
     // Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f, 0.0f, 1920.0f, 1080.0f});
     Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2});
     Object windowObject(&normalGlobalShader, {-1920.0f / 2, -1080.0f / 2, 1920.0f / 2, -1080.0f / 2, 1920.0f / 2, 1080.0f / 2, -1920.0f / 2, 1080.0f / 2}, {1.0f, 0.0f, 1.0f, 1.0f});
 
-    // GRID SPACING DEBUG / DEMO CODE 
-    std::vector<float> grid; 
-    for(int i = -SRC_WIDTH/(2); i < SRC_WIDTH/2; i+=DELTA_L){
-        grid.push_back(i + DELTA_L/2);            
-        grid.push_back(-1080.0f/2);  
-        grid.push_back(i + DELTA_L/2);            
-        grid.push_back(1080.0f/2); 
+    // GRID SPACING DEBUG / DEMO CODE
+    std::vector<float> grid;
+    for (int i = -SRC_WIDTH / (2); i < SRC_WIDTH / 2; i += DELTA_L)
+    {
+        grid.push_back(i + DELTA_L / 2);
+        grid.push_back(-1080.0f / 2);
+        grid.push_back(i + DELTA_L / 2);
+        grid.push_back(1080.0f / 2);
     }
-    for(int i = -SRC_HEIGHT/(2); i < SRC_HEIGHT/2; i+=DELTA_L){
-        grid.push_back(-SRC_WIDTH/2);  
-        grid.push_back(i + DELTA_L/2);            
-        grid.push_back(SRC_WIDTH/2); 
-        grid.push_back(i + DELTA_L/2);            
+    for (int i = -SRC_HEIGHT / (2); i < SRC_HEIGHT / 2; i += DELTA_L)
+    {
+        grid.push_back(-SRC_WIDTH / 2);
+        grid.push_back(i + DELTA_L / 2);
+        grid.push_back(SRC_WIDTH / 2);
+        grid.push_back(i + DELTA_L / 2);
     }
-    Object gridObject(&normalGlobalShader, grid, {0.1f, 0.1f, 0.1f, 1.0f}); 
+    Object gridObject(&modifiedGridShader, grid, {0.1f, 0.1f, 0.1f, 1.0f});
 
     // Main Loop of the function
     while (!glfwWindowShouldClose(window))
@@ -185,10 +218,11 @@ int main()
 
         metaballs[0] = xpos;
         metaballs[1] = ypos;
-        metaballs[2] = 0; 
+        metaballs[2] = 0;
 
-        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)){
-            metaballs[2] = 10.0f; 
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT))
+        {
+            metaballs[2] = 10.0f;
         }
 
         // metaballs[0]++;
@@ -199,8 +233,16 @@ int main()
 
         // Running compute shader
         computeShader.use();
-        computeShader.setFloat("lerp", debug); 
+        computeShader.setFloat("lerp", debug);
         computeShader.setFloat("delta", DELTA_L);
+        computeShader.setFloat("cameraX", camera.position.x); 
+        computeShader.setFloat("cameraY", camera.position.y);   
+        if (autoscale){   
+            computeShader.setFloat("zoom", zoomLevel); 
+        } else {
+            computeShader.setFloat("zoom", 1.0f); 
+        }
+
         computeShader.dispatch();
         computeShader.wait();
 
@@ -215,17 +257,21 @@ int main()
         glDrawArraysInstanced(GL_LINE_LOOP, 0, 2, X_AMOUNT * Y_AMOUNT);
         glBindVertexArray(0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        
-        if (debug){
-            gridObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES); 
-            windowObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
+
+        if (debug)
+        {
+            gridObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
+            // windowObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
+        }
+        if (autoscale){
+
         }
 
         glfwSwapBuffers(window); // Swaps the color buffer that is used to render to during this render iteration and show it ot the output screen
         glfwPollEvents();        // Checks if any events are triggered, updates the window state andcalls the corresponding functions
     }
 
-    glfwTerminate(); // Call this function to properly clean up GLFW's big mess
+    glfwTerminate(); 
     return 0;
 }
 
@@ -237,27 +283,30 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-
-
 // Zooming callback
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
     // Calculate new zoom level
     double newZoomLevel = zoomLevel * std::exp(-yoffset / 10.0);
 
     // Clamp the zoom level to a range
-    double minVal = 0.01; 
-    double maxVal = 100.0; 
+    double minVal = 0.01;
+    double maxVal = 100.0;
     newZoomLevel = std::max(minVal, newZoomLevel);
     newZoomLevel = std::min(maxVal, newZoomLevel);
 
     // Set the new zoom level
-    zoomLevel = newZoomLevel;
+    if (autoscale){
+        zoomLevel = newZoomLevel;
+        DELTA_L = SRC_WIDTH/(COUNT * zoomLevel); 
+    } else {
+        zoomLevel = newZoomLevel;
+        DELTA_L = SRC_WIDTH / COUNT; 
+    }
 }
 
-
 // Mouse button callback
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
@@ -272,7 +321,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 // Mouse movement callback
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
     if (isDragging)
     {
@@ -290,24 +339,33 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     }
 }
 
-
 /**
  * @brief Handles all user input given the window object, currently handles player movement
  *
  * @param window
  */
-bool debugKeyPressed = false; 
+bool debugKeyPressed = false;
+bool autoScaleKeyPressed = false; 
 void processInput(GLFWwindow *window)
 {
     // // Function is used as follows player.processKeyboard(ENUM, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && debugKeyPressed == false){
-        debug = !debug;  
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && debugKeyPressed == false)
+    {
+        debug = !debug;
         debugKeyPressed = true;
     }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE){
-        debugKeyPressed = false; 
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE)
+    {
+        debugKeyPressed = false;
+    }
+    if (glfwGetKey(window , GLFW_KEY_S) == GLFW_PRESS && autoScaleKeyPressed == false){
+        autoscale = !autoscale; 
+        autoScaleKeyPressed = true; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE){
+        autoScaleKeyPressed = false; 
     }
 }

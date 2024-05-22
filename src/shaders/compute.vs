@@ -7,6 +7,10 @@ layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 uniform float delta; 
 uniform float lerp;
+uniform float cameraX;
+uniform float cameraY; 
+uniform float zoom; 
+uniform float scalePoints; 
 
 layout (std430, binding = 4) buffer pos {
     vec2 positions[]; 
@@ -38,6 +42,9 @@ void main(){
     uint gid = gl_GlobalInvocationID.x;
     bool tl, tr, bl, br, c; 
 
+    float xPos = positions[gid].x/zoom + cameraX; 
+    float yPos = positions[gid].y/zoom + cameraY; 
+
     // Setting the default to not visible 
     outputPositions[gid*4 + 3] = vec2(0, 0); 
     outputPositions[gid*4 + 2] = vec2(0, 0);
@@ -46,11 +53,11 @@ void main(){
 
     float values[5] = {0, 0, 0, 0, 0};
 
-    values[0] = computeAtXY(positions[gid].x + delta/2, positions[gid].y + delta/2);
-    values[1] = computeAtXY(positions[gid].x - delta/2, positions[gid].y + delta/2);
-    values[2] = computeAtXY(positions[gid].x + delta/2, positions[gid].y - delta/2);
-    values[3] = computeAtXY(positions[gid].x - delta/2, positions[gid].y - delta/2);
-    // values[4] = computeAtXY(positions[gid].x, positions[gid].y);
+    values[0] = computeAtXY(xPos + delta/2, yPos + delta/2);
+    values[1] = computeAtXY(xPos - delta/2, yPos + delta/2);
+    values[2] = computeAtXY(xPos + delta/2, yPos - delta/2);
+    values[3] = computeAtXY(xPos - delta/2, yPos - delta/2);
+    // values[4] = computeAtXY(xPos, yPos);
 
     // TESTING POINTS OF THE FUNCTION
     if (values[4] > 1){
@@ -107,27 +114,27 @@ void main(){
     if (result == 4){
         // Marching cubes
         float p = (1 - values[3]) / (values[2] - values[3]);
-        outputPositions[gid*4] = vec2(p * delta + positions[gid].x - delta/2, positions[gid].y - delta/2);
+        outputPositions[gid*4] = vec2(p * delta + xPos - delta/2, yPos - delta/2);
         p = (1 - values[0]) / (values[2] - values[0]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2, -p * delta +  positions[gid].y + delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2, -p * delta +  yPos + delta/2);
     }
     if (result == 8){
         float p = (1 - values[1]) / (values[3] - values[1]);
-        outputPositions[gid * 4] = vec2(positions[gid].x - delta/2, -p * delta +  positions[gid].y + delta/2);
+        outputPositions[gid * 4] = vec2(xPos - delta/2, -p * delta +  yPos + delta/2);
         p = (1 - values[2]) / (values[3] - values[2]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2 - p*delta, positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2 - p*delta, yPos - delta/2);
     }
     if (result == 2){
         float p = ( 1 - values[0]) / (values[1] - values[0]);
-        outputPositions[gid*4] = vec2(-p * delta + positions[gid].x + delta/2, positions[gid].y + delta/2);
+        outputPositions[gid*4] = vec2(-p * delta + xPos + delta/2, yPos + delta/2);
         p = (1 - values[3]) / (values[1] - values[3]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x - delta/2, p * delta +  positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos - delta/2, p * delta +  yPos - delta/2);
     }
     if (result == 1){
         float p = (1 - values[1])/(values[0] - values[1]);
-        outputPositions[gid * 4] = vec2(p * delta + positions[gid].x - delta/2, positions[gid].y + delta/2);
+        outputPositions[gid * 4] = vec2(p * delta + xPos - delta/2, yPos + delta/2);
         p = (1 - values[2])/(values[0] - values[2]);    
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2, positions[gid].y - delta/2 + p * delta);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2, yPos - delta/2 + p * delta);
     }
 
     // Casework all single lines 
@@ -135,18 +142,18 @@ void main(){
     // This means that the bottom left and bottom right are inside the metaball
     if (result == 12){
         float p = (1 - values[1]) / (values[3] - values[1]);
-        outputPositions[gid * 4] = vec2(positions[gid].x - delta/2, -p * delta +  positions[gid].y + delta/2);
+        outputPositions[gid * 4] = vec2(xPos - delta/2, -p * delta +  yPos + delta/2);
         p = (1 - values[0]) / (values[2] - values[0]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2, positions[gid].y + delta/2 - p * delta);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2, yPos + delta/2 - p * delta);
     }
 
     // 1010 : 10
     // This means that the top left and bottom leftare inside the metaball
     if (result == 10){
         float p = (1 - values[0]) / (values[1] - values[0]);
-        outputPositions[gid*4] = vec2(-p * delta + positions[gid].x + delta/2, positions[gid].y + delta/2);
+        outputPositions[gid*4] = vec2(-p * delta + xPos + delta/2, yPos + delta/2);
         p = (1 - values[2])/(values[3] - values[2]); 
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2 - p * delta, positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2 - p * delta, yPos - delta/2);
     }
 
     // 0101 : 5
@@ -154,9 +161,9 @@ void main(){
     if (result == 5){
         // Linear interpolation
         float p = (1 - values[1]) / (values[0] - values[1]);
-        outputPositions[gid*4] = vec2(p * delta + positions[gid].x - delta/2, positions[gid].y + delta/2);
+        outputPositions[gid*4] = vec2(p * delta + xPos - delta/2, yPos + delta/2);
         p = (1 - values[3]) / (values[2] - values[3]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x - delta/2 + p * delta, positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos - delta/2 + p * delta, yPos - delta/2);
     }
 
     // 0011 : 3
@@ -164,9 +171,9 @@ void main(){
     // HAS LERP
     if (result == 3){
         float p = (1 - values[3]) / (values[1] - values[3]);
-        outputPositions[gid*4] = vec2(positions[gid].x - delta/2, p * delta +  positions[gid].y - delta/2);
+        outputPositions[gid*4] = vec2(xPos - delta/2, p * delta +  yPos - delta/2);
         p = (1 - values[2]) / (values[0] - values[2]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2, positions[gid].y - delta/2 + p * delta);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2, yPos - delta/2 + p * delta);
     }
 
 
@@ -175,9 +182,9 @@ void main(){
     // This means that the bottom left, bottom right and top left are inside the metaball
     if (result == 14){
         float p = (1 - values[0])/(values[2] - values[0]);
-        outputPositions[gid*4] = vec2(positions[gid].x + delta/2, -p * delta +  positions[gid].y + delta/2);
+        outputPositions[gid*4] = vec2(xPos + delta/2, -p * delta +  yPos + delta/2);
         p = (1 - values[0])/(values[1] - values[0]);
-        outputPositions[gid*4 + 1] = vec2(-p * delta + positions[gid].x + delta/2, positions[gid].y + delta/2);
+        outputPositions[gid*4 + 1] = vec2(-p * delta + xPos + delta/2, yPos + delta/2);
     }
 
     // 1101 : 13
@@ -185,50 +192,50 @@ void main(){
     if (result == 13){
         // Linear interpolation
         float p = (1 - values[1]) / (values[0] - values[1]);
-        outputPositions[gid*4] = vec2(p * delta + positions[gid].x - delta/2, positions[gid].y + delta/2);
+        outputPositions[gid*4] = vec2(p * delta + xPos - delta/2, yPos + delta/2);
         p = (1 - values[1]) / (values[3] - values[1]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x - delta/2, -p * delta +  positions[gid].y + delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos - delta/2, -p * delta +  yPos + delta/2);
     }
 
     // 1011 : 11
     // This means that the bottom right is not in the metaball
     if (result == 11){
         float p = (1 - values[2]) / (values[0] - values[2]);
-        outputPositions[gid*4] = vec2(positions[gid].x + delta/2, p * delta +  positions[gid].y - delta/2);
+        outputPositions[gid*4] = vec2(xPos + delta/2, p * delta +  yPos - delta/2);
         p = (1 - values[2]) / (values[3] - values[2]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x + delta/2 - p * delta, positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos + delta/2 - p * delta, yPos - delta/2);
     }
 
     // 0111 : 7
     // This means that the bottom left is not in the metaball 
     if (result == 7){
         float p = (1 - values[3]) / (values[1] - values[3]);
-        outputPositions[gid*4] = vec2(positions[gid].x - delta/2, p * delta +  positions[gid].y - delta/2);
+        outputPositions[gid*4] = vec2(xPos - delta/2, p * delta +  yPos - delta/2);
         p = (1 - values[3]) / (values[2] - values[3]);
-        outputPositions[gid*4 + 1] = vec2(positions[gid].x - delta/2 + p * delta, positions[gid].y - delta/2);
+        outputPositions[gid*4 + 1] = vec2(xPos - delta/2 + p * delta, yPos - delta/2);
     }
     
     // if (br == true && bl == true && tl == true && tr == true){
     //     // Marching cubes
     //     // If the entire square is inside the metaball, then just use the two lines to make an x
-    //     outputPositions[gid*4] =        vec2(positions[gid].x + delta/2, positions[gid].y + delta/2);
-    //     outputPositions[gid*4 + 1] =    vec2(positions[gid].x - delta/2, positions[gid].y - delta/2);
-    //     outputPositions[gid*4 + 2] =    vec2(positions[gid].x - delta/2, positions[gid].y + delta/2);
-    //     outputPositions[gid*4 + 3] =    vec2(positions[gid].x + delta/2, positions[gid].y - delta/2);
+    //     outputPositions[gid*4] =        vec2(xPos + delta/2, yPos + delta/2);
+    //     outputPositions[gid*4 + 1] =    vec2(xPos - delta/2, yPos - delta/2);
+    //     outputPositions[gid*4 + 2] =    vec2(xPos - delta/2, yPos + delta/2);
+    //     outputPositions[gid*4 + 3] =    vec2(xPos + delta/2, yPos - delta/2);
     // }
     // if (br == false && bl == false && tl == false && tr == false){
     //     // Marching cubes
     //     // If the entire square is inside the metaball, then just use the two lines to make an x
-    //     outputPositions[gid*4] =        vec2(positions[gid].x + delta/2, positions[gid].y);
-    //     outputPositions[gid*4 + 1] =    vec2(positions[gid].x - delta/2, positions[gid].y);
-    //     outputPositions[gid*4 + 2] =    vec2(positions[gid].x, positions[gid].y + delta/2);
-    //     outputPositions[gid*4 + 3] =    vec2(positions[gid].x, positions[gid].y - delta/2);
+    //     outputPositions[gid*4] =        vec2(xPos + delta/2, yPos);
+    //     outputPositions[gid*4 + 1] =    vec2(xPos - delta/2, yPos);
+    //     outputPositions[gid*4 + 2] =    vec2(xPos, yPos + delta/2);
+    //     outputPositions[gid*4 + 3] =    vec2(xPos, yPos - delta/2);
     // }
     
     // if (br == false && bl == false && tl == false && tr == false || true){
     //     // Marching cubes
     //     outputPositions[gid*4] = vec2(gid, metaballs.length());
-    //     outputPositions[gid*4 + 1] =    vec2(computeAtXY(positions[gid].x - delta/2, positions[gid].y - delta/2), 808);
-    //     outputPositions[gid*4 + 2] =    vec2(positions[gid].x, positions[gid].y);
+    //     outputPositions[gid*4 + 1] =    vec2(computeAtXY(xPos - delta/2, yPos - delta/2), 808);
+    //     outputPositions[gid*4 + 2] =    vec2(xPos, yPos);
     // }
 }
