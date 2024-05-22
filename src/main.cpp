@@ -13,9 +13,9 @@
 
 int SRC_WIDTH = 1920;
 int SRC_HEIGHT = 1080;
-const int X_AMOUNT = 1920 / 2.5;
-const int Y_AMOUNT = 1080 / 5;
-const float COUNT = 384; 
+const int X_AMOUNT = 1920 / 5;
+const int Y_AMOUNT = 1080 / 10;
+const float COUNT = 384/2; 
 float DELTA_L = SRC_WIDTH / COUNT; 
 // float DELTA_L = 5.0f;
 
@@ -44,7 +44,8 @@ void processInput(GLFWwindow *window);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
-std::vector<float> metaballs = {-1920.0f / 2, -1080.0f / 2, -30.0f, 0.0f, 20.0f, 100.0f, 200.0f, 0.0f, 700.0f, 100.0f, 70.0f, 0.0f}; // These just contain the x and y coordinate of the center along with the scaling factor!
+std::vector<float> metaballs = {}; // These just contain the x and y coordinate of the center along with the scaling factor!
+std::vector<glm::vec2> metaballsVel; 
 void updateMetaballs(); 
 
 // timing
@@ -98,12 +99,13 @@ int main()
     std::vector<float> outputPositions;
 
     srand(glfwGetTime());
-    for (int i = 0; i < 40; i++)
+    for (int i = 0; i < 30; i++)
     {
         metaballs.push_back(1920 / 2 - rand() % (1920));
         metaballs.push_back(1080 / 2 - rand() % (1080));
-        metaballs.push_back(rand() % (10));
+        metaballs.push_back(rand() % (5) + 15);
         metaballs.push_back(0);
+        metaballsVel.push_back(glm::vec2(5 - rand()%10, 5 - rand()%10)); 
     }
 
     for (int i = 0; i < X_AMOUNT; i++)
@@ -225,7 +227,32 @@ void main()
             metaballs[2] = 10.0f;
         }
 
-        // metaballs[0]++;
+        for(int i = 0; i < metaballs.size(); i+=4){
+            float xVel = metaballsVel[(i/4)].x; 
+            float yVel = metaballsVel[(i/4)].y; 
+            float xPos = metaballs[i]; 
+            float yPos = metaballs[i+1]; 
+            
+            if (xPos + xVel > SRC_WIDTH/2){
+                xVel *= -1; 
+            }
+            if (xPos + xVel < -SRC_WIDTH/2){
+                xVel *= -1; 
+            }
+            if (yPos + yVel > SRC_HEIGHT/2){
+                yVel *= -1; 
+            }
+            if (yPos + yVel < -SRC_HEIGHT/2){
+                yVel *= -1; 
+            }
+            
+            metaballsVel[(i/4)].x = xVel;
+            metaballsVel[(i/4)].y = yVel; 
+            metaballs[i] = xPos + xVel;
+            metaballs[i+1] = yPos + yVel;  
+        }
+
+        metaballs[4]++;
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, metaballs.size() * sizeof(float), metaballs.data(), GL_STATIC_READ);

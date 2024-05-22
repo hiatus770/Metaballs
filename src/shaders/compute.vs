@@ -30,6 +30,7 @@ float computeAtXY(float x, float y){
         float dist = distance(metaballs[i].xy, vec2(x, y)) + 0.0001;
         sum += inversesqrt(pow(metaballs[i].x - x, 2) + pow(metaballs[i].y - y, 2)) * metaballs[i].z;
     }
+
     if (lerp == 1 && sum > 1){
         return 2; 
     } else if (lerp == 1 && sum < 1){
