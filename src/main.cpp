@@ -85,6 +85,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glEnable(GL_DEPTH_TEST);
+    glLineWidth(3.0f);
 
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -99,7 +100,7 @@ int main()
     std::vector<float> outputPositions;
 
     srand(glfwGetTime());
-    for (int i = 0; i < 30; i++)
+    for (int i = 0; i < 20; i++)
     {
         metaballs.push_back(1920 / 2 - rand() % (1920));
         metaballs.push_back(1080 / 2 - rand() % (1080));
@@ -227,32 +228,31 @@ void main()
             metaballs[2] = 10.0f;
         }
 
-        for(int i = 0; i < metaballs.size(); i+=4){
-            float xVel = metaballsVel[(i/4)].x; 
-            float yVel = metaballsVel[(i/4)].y; 
-            float xPos = metaballs[i]; 
-            float yPos = metaballs[i+1]; 
+        // for(int i = 0; i < metaballs.size(); i+=4){
+        //     float xVel = metaballsVel[(i/4)].x; 
+        //     float yVel = metaballsVel[(i/4)].y; 
+        //     float xPos = metaballs[i]; 
+        //     float yPos = metaballs[i+1]; 
             
-            if (xPos + xVel > SRC_WIDTH/2){
-                xVel *= -1; 
-            }
-            if (xPos + xVel < -SRC_WIDTH/2){
-                xVel *= -1; 
-            }
-            if (yPos + yVel > SRC_HEIGHT/2){
-                yVel *= -1; 
-            }
-            if (yPos + yVel < -SRC_HEIGHT/2){
-                yVel *= -1; 
-            }
+        //     if (xPos + xVel > SRC_WIDTH/2){
+        //         xVel *= -1; 
+        //     }
+        //     if (xPos + xVel < -SRC_WIDTH/2){
+        //         xVel *= -1; 
+        //     }
+        //     if (yPos + yVel > SRC_HEIGHT/2){
+        //         yVel *= -1; 
+        //     }
+        //     if (yPos + yVel < -SRC_HEIGHT/2){
+        //         yVel *= -1; 
+        //     }
             
-            metaballsVel[(i/4)].x = xVel;
-            metaballsVel[(i/4)].y = yVel; 
-            metaballs[i] = xPos + xVel;
-            metaballs[i+1] = yPos + yVel;  
-        }
+        //     metaballsVel[(i/4)].x = xVel;
+        //     metaballsVel[(i/4)].y = yVel; 
+        //     metaballs[i] = xPos + xVel;
+        //     metaballs[i+1] = yPos + yVel;  
+        // }
 
-        metaballs[4]++;
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, metaballs.size() * sizeof(float), metaballs.data(), GL_STATIC_READ);
