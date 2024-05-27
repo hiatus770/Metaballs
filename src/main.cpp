@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "texture.h"
+#include <fstream> 
 
 int SRC_WIDTH = 1920;
 int SRC_HEIGHT = 1080;
@@ -91,7 +92,6 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glLineWidth(1.0f);
 
     ComputeShader computeShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/compute.vs")).c_str());
 
@@ -100,11 +100,11 @@ int main()
     std::vector<float> outputPositions;
 
     srand(glfwGetTime());
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 1; i++)
     {
         metaballs.push_back(1920 / 2 - rand() % (1920));
         metaballs.push_back(1080 / 2 - rand() % (1080));
-        metaballs.push_back(rand() % (5) + 15);
+        metaballs.push_back(5);
         metaballs.push_back(0);
         metaballsVel.push_back(glm::vec2(5 - rand()%10, 5 - rand()%10)); 
     }
@@ -157,7 +157,7 @@ void main()
         std::string(R"(#version 430 core
 out vec4 FragColor;
 
-uniform vec4 color = vec4(1.0, 1.0, 1.0, 1.0); 
+uniform vec4 color = vec4(1.0, 121/255.0, 241/255.0, 1.0); 
 
 void main()
 { 
@@ -169,7 +169,7 @@ void main()
     Shader modifiedGridShader(std::string(HOME_DIRECTORY + std::string("/src/shaders/modifiedVert.vs")).c_str(),std::string(HOME_DIRECTORY + std::string("/src/shaders/frag.fs")).c_str());
 
     // Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f, 0.0f, 1920.0f, 1080.0f});
-    Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2});
+    Object metaballRenderer(&globalShader, {0.0f, 0.0f, 1080.0f / 2, 0.0f, 1920.0f / 2, 1080.0f / 2}, {0.0f, 121/255.0f, 241/255.0f, 1.0f});
     Object windowObject(&normalGlobalShader, {-1920.0f / 2, -1080.0f / 2, 1920.0f / 2, -1080.0f / 2, 1920.0f / 2, 1080.0f / 2, -1920.0f / 2, 1080.0f / 2}, {1.0f, 0.0f, 1.0f, 1.0f});
 
     // GRID SPACING DEBUG / DEMO CODE
@@ -188,7 +188,11 @@ void main()
         grid.push_back(SRC_WIDTH / 2);
         grid.push_back(i + DELTA_L / 2);
     }
-    Object gridObject(&modifiedGridShader, grid, {0.1f, 0.1f, 0.1f, 1.0f});
+
+
+    Object gridObject(&modifiedGridShader, grid, {1.0f, 1.0f, 1.0f, 1.0f});
+
+    int lastMetaballCount = metaballs.size();
 
     // Main Loop of the function
     while (!glfwWindowShouldClose(window))
@@ -199,7 +203,7 @@ void main()
         std::cout << "FPS: " << 1 / deltaTime << std::endl;
 
         // Clear the screen before we start
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(24/255.0f, 24/255.0f, 24/255.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         camera.projection = glm::ortho((float)-SRC_WIDTH / (2 * zoomLevel), (float)SRC_WIDTH / (2 * zoomLevel), (float)-SRC_HEIGHT / (2 * zoomLevel), (float)SRC_HEIGHT / (2 * zoomLevel), -1.0f, 1.0f);
@@ -228,30 +232,38 @@ void main()
             metaballs[2] = 10.0f;
         }
 
-        // for(int i = 0; i < metaballs.size(); i+=4){
-        //     float xVel = metaballsVel[(i/4)].x; 
-        //     float yVel = metaballsVel[(i/4)].y; 
-        //     float xPos = metaballs[i]; 
-        //     float yPos = metaballs[i+1]; 
+        
+        metaballs.push_back(1920 / 2 - rand() % (1920));
+        metaballs.push_back(1080 / 2 - rand() % (1080));
+        metaballs.push_back(5);
+        metaballs.push_back(0);
+        metaballsVel.push_back(glm::vec2(5 - rand()%10, 5 - rand()%10));
+
+        // Physics loop 
+        for(int i = 0; i < metaballs.size(); i+=4){
+            float xVel = metaballsVel[(i/4)].x; 
+            float yVel = metaballsVel[(i/4)].y; 
+            float xPos = metaballs[i]; 
+            float yPos = metaballs[i+1]; 
             
-        //     if (xPos + xVel > SRC_WIDTH/2){
-        //         xVel *= -1; 
-        //     }
-        //     if (xPos + xVel < -SRC_WIDTH/2){
-        //         xVel *= -1; 
-        //     }
-        //     if (yPos + yVel > SRC_HEIGHT/2){
-        //         yVel *= -1; 
-        //     }
-        //     if (yPos + yVel < -SRC_HEIGHT/2){
-        //         yVel *= -1; 
-        //     }
+            if (xPos + xVel > SRC_WIDTH/2){
+                xVel *= -1; 
+            }
+            if (xPos + xVel < -SRC_WIDTH/2){
+                xVel *= -1; 
+            }
+            if (yPos + yVel > SRC_HEIGHT/2){
+                yVel *= -1; 
+            }
+            if (yPos + yVel < -SRC_HEIGHT/2){
+                yVel *= -1; 
+            }
             
-        //     metaballsVel[(i/4)].x = xVel;
-        //     metaballsVel[(i/4)].y = yVel; 
-        //     metaballs[i] = xPos + xVel;
-        //     metaballs[i+1] = yPos + yVel;  
-        // }
+            metaballsVel[(i/4)].x = xVel;
+            metaballsVel[(i/4)].y = yVel; 
+            metaballs[i] = xPos + xVel * deltaTime;
+            metaballs[i+1] = yPos + yVel * deltaTime;  
+        }
 
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, metaballsSSBO);
@@ -274,6 +286,8 @@ void main()
         computeShader.wait();
 
         // NEW RENDERING CODE!
+        
+        glLineWidth(4.0f);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, outputPositionSSBO);
         metaballRenderer.shader->use();
         metaballRenderer.shader->setVec4("color", metaballRenderer.objColor);
@@ -285,14 +299,23 @@ void main()
         glBindVertexArray(0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+        glLineWidth(1.0f);
         if (debug)
         {
             gridObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
             // windowObject.render(camera.getViewMatrix(), camera.getProjectionMatrix(), GL_LINES);
         }
-        if (autoscale){
 
+        if (lastMetaballCount != metaballs.size())
+        {
+            //  Write to data.txt the amount of metaballs and the fps
+            std::ofstream file;
+            file.open(HOME_DIRECTORY + std::string("/data.txt"), std::ios::app);
+            file << metaballs.size()/4 << "	" << 1 / deltaTime << std::endl;
+            file.close();
         }
+
+        lastMetaballCount = metaballs.size();
 
         glfwSwapBuffers(window); // Swaps the color buffer that is used to render to during this render iteration and show it ot the output screen
         glfwPollEvents();        // Checks if any events are triggered, updates the window state andcalls the corresponding functions
@@ -383,6 +406,8 @@ void processInput(GLFWwindow *window)
     {
         debug = !debug;
         debugKeyPressed = true;
+        // Add a new metaball
+        srand(glfwGetTime());
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE)
     {
